@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aurora for Kraken Plus (240x240)</title>
+  <!--
+    Kraken Plus / Kraken (1.54", 240x240) version of the "Fluid Dynamics - Aurora"
+    NZXT CAM web integration by najibra (https://github.com/najibra/nzxtv2).
+    The original is laid out for the 640x640 Kraken Elite; this version keeps the
+    cyan/magenta aurora beams but shows fewer, much larger readouts so they stay
+    legible on the smaller screen.
+    Inside NZXT CAM (?kraken=1) it renders the face fed by
+    window.nzxt.v1.onMonitoringDataUpdate; in a normal browser it shows a
+    configuration card plus a live simulated preview.
+  -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="config" class="config" hidden>
+    <h1>Aurora <span>for Kraken Plus</span></h1>
+    <p>
+      A 240&times;240 version of the Aurora face for the NZXT Kraken / Kraken Plus
+      1.54" LCD: big CPU temperature, GPU and liquid temperatures, and RAM usage,
+      with the animated aurora beams. Requires NZXT CAM with Web Integrations enabled.
+    </p>
+    <label for="share-url"><strong>Paste this into CAM</strong> (Lighting &rarr; LCD Display &rarr; Web Integration &rarr; Custom):</label>
+    <input id="share-url" type="text" readonly />
+    <p class="hint">Live preview (simulated data):</p>
+  </div>
+
+  <div id="face-wrap" class="face-wrap">
+    <svg id="face" viewBox="0 0 640 640" xmlns="http://www.w3.org/2000/svg" font-family="Inter, 'Segoe UI', sans-serif">
+      <defs>
+        <radialGradient id="bg-grad" cx="50%" cy="42%" r="65%">
+          <stop offset="0%" stop-color="#0a0e1a" />
+          <stop offset="70%" stop-color="#060912" />
+          <stop offset="100%" stop-color="#03050c" />
+        </radialGradient>
+        <linearGradient id="grad-cyan" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#67e8f9" />
+          <stop offset="100%" stop-color="#0ea5e9" />
+        </linearGradient>
+        <linearGradient id="grad-magenta" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#e879f9" />
+          <stop offset="100%" stop-color="#a855f7" />
+        </linearGradient>
+        <linearGradient id="grad-cpu" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#22d3ee" />
+          <stop offset="100%" stop-color="#c026d3" />
+        </linearGradient>
+        <linearGradient id="beam-cyan" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#0ea5e9" stop-opacity="0.1" />
+          <stop offset="35%" stop-color="#38bdf8" />
+          <stop offset="60%" stop-color="#a5f3fc" />
+          <stop offset="100%" stop-color="#2563eb" stop-opacity="0.15" />
+        </linearGradient>
+        <linearGradient id="beam-magenta" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#a855f7" stop-opacity="0.1" />
+          <stop offset="35%" stop-color="#d946ef" />
+          <stop offset="60%" stop-color="#f5d0fe" />
+          <stop offset="100%" stop-color="#ec4899" stop-opacity="0.15" />
+        </linearGradient>
+        <filter id="beam-blur" x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="3.5" />
+        </filter>
+        <filter id="beam-haze" x="-100%" y="-100%" width="300%" height="300%">
+          <feGaussianBlur stdDeviation="14" />
+        </filter>
+        <filter id="soft-glow" x="-80%" y="-80%" width="260%" height="260%">
+          <feGaussianBlur stdDeviation="5" result="b" />
+          <feMerge>
+            <feMergeNode in="b" /><feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+
+      <!-- face background -->
+      <circle cx="320" cy="320" r="318" fill="url(#bg-grad)" />
+      <circle cx="320" cy="320" r="314" fill="none" stroke="#1f2433" stroke-width="4" />
+
+      <!-- ambient particles (built by script) -->
+      <g id="particles"></g>
+
+      <!-- animated aurora beams (paths generated + animated by script) -->
+      <g id="beams-haze" filter="url(#beam-haze)"></g>
+      <g id="beams" filter="url(#beam-blur)"></g>
+
+      <!-- header -->
+      <text x="320" y="92" text-anchor="middle" class="logo">NZXT</text>
+
+      <!-- CPU (center, large) -->
+      <g id="g-cpu" text-anchor="middle">
+        <circle cx="320" cy="268" r="128" fill="#080b14" stroke="#1f2433" stroke-width="4" />
+        <circle class="ring-under ring-cpu" cx="320" cy="268" r="140" />
+        <circle id="cpu-arc" class="arc arc-big arc-cpu" cx="320" cy="268" r="140" pathLength="100"
+                transform="rotate(110 320 268)" filter="url(#soft-glow)" />
+        <text x="320" y="210" class="cpu-title">CPU</text>
+        <text id="cpu-value" x="328" y="318" class="big-value">--&#176;</text>
+      </g>
+
+      <!-- GPU (bottom left) -->
+      <g id="g-gpu" text-anchor="middle">
+        <circle cx="176" cy="468" r="80" fill="#080b14" stroke="#1f2433" stroke-width="4" />
+        <circle class="ring-under ring-cyan" cx="176" cy="468" r="90" />
+        <circle id="gpu-arc" class="arc arc-cyan" cx="176" cy="468" r="90" pathLength="100"
+                transform="rotate(-150 176 468)" filter="url(#soft-glow)" />
+        <text x="176" y="440" class="small-label">GPU</text>
+        <text id="gpu-value" x="180" y="502" class="mid-value">--&#176;</text>
+      </g>
+
+      <!-- LIQUID (bottom right) -->
+      <g id="g-liquid" text-anchor="middle">
+        <circle cx="464" cy="468" r="80" fill="#080b14" stroke="#1f2433" stroke-width="4" />
+        <circle class="ring-under ring-magenta" cx="464" cy="468" r="90" />
+        <circle id="liquid-arc" class="arc arc-magenta" cx="464" cy="468" r="90" pathLength="100"
+                transform="rotate(-30 464 468)" filter="url(#soft-glow)" />
+        <text x="464" y="440" class="small-label">LIQUID</text>
+        <text id="liquid-value" x="468" y="502" class="mid-value">--&#176;</text>
+      </g>
+
+      <!-- RAM (bottom center) -->
+      <g id="g-ram" text-anchor="middle">
+        <text x="320" y="512" class="ram-label">RAM</text>
+        <text id="ram-value" x="320" y="556" class="ram-value">--%</text>
+      </g>
+    </svg>
+  </div>
+
+  <script src="script.js?v=plus-240"></script>
+</body>
+</html>
